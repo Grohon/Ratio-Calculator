@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ratio Calculator - Instant Resolution Calculator</title>
+
+    <meta
+      name="description"
+      content="Calculate aspect ratios instantly with our responsive ratio calculator. Perfect for screen resolutions, image dimensions, and video formats."
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>Ratio Calculator</h1>
+      <p class="subtitle">Calculate aspect ratios and resolutions instantly</p>
+
+      <div class="card">
+        <div class="main-inputs">
+          <div class="input-group">
+            <label for="inputA" class="input-label">Width (A)</label>
+            <input
+              type="number"
+              id="inputA"
+              placeholder="e.g., 1920"
+              min="1"
+              aria-label="Width input"
+            />
+          </div>
+          <div class="input-group">
+            <label for="inputB" class="input-label">Height (B)</label>
+            <input
+              type="number"
+              id="inputB"
+              placeholder="e.g., 1080"
+              min="1"
+              aria-label="Height input"
+            />
+          </div>
+        </div>
+
+        <div class="ratio-section">
+          <label class="input-label">Aspect Ratios</label>
+          <div id="ratioContainer"></div>
+          <button
+            class="btn btn-add"
+            id="addRatioBtn"
+            type="button"
+            aria-label="Add new ratio"
+          >
+            + Add Ratio
+          </button>
+        </div>
+      </div>
+
+      <div class="results-container">
+        <h2 class="results-title">Results</h2>
+        <div id="resultsContainer">
+          <div class="empty-state">
+            <div class="empty-state-icon">📐</div>
+            <p>Enter dimensions and ratios to see results</p>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <p>
+          © 2025 Ratio Calculator. Developed by
+          <a
+            href="https://github.com/grohon"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Abu Foysal</a
+          >
+        </p>
+      </footer>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
