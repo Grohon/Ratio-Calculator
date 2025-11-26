@@ -39,7 +39,7 @@ body {
 }
 
 .container {
-  max-width: 800px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -63,15 +63,24 @@ h1 {
   animation: fadeInUp 0.6s ease-out;
 }
 
+.main-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
 .card {
   background: var(--bg-card);
   border-radius: 20px;
   padding: 2.5rem;
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--border-color);
-  margin-bottom: 2rem;
   animation: fadeIn 0.6s ease-out;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  height: fit-content;
+  position: sticky;
+  top: 2rem;
 }
 
 .card:hover {
@@ -222,6 +231,7 @@ input[type="number"] {
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--border-color);
   animation: fadeIn 0.6s ease-out 0.2s backwards;
+  min-height: 400px;
 }
 
 .results-title {
@@ -364,7 +374,22 @@ input[type="number"] {
   }
 }
 
+@media (max-width: 1024px) {
+  .main-content {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .card {
+    position: static;
+  }
+}
+
 @media (max-width: 768px) {
+  .container {
+    max-width: 100%;
+  }
+
   h1 {
     font-size: 2rem;
   }
@@ -383,6 +408,7 @@ input[type="number"] {
 
   .results-container {
     padding: 1.5rem;
+    min-height: 300px;
   }
 }
 
