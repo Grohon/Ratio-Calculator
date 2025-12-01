@@ -224,7 +224,7 @@ function renderResults() {
                 <div class="result-item correct">
                     <div class="result-text">
                         <span class="badge-success result-badge">✓</span>
-                        ${result.width} × ${result.height} [${ratioText}]
+                        <span>${result.width}</span><span> × </span><span>${result.height}</span><span> [${ratioText}]</span>
                     </div>
                 </div>
             `;
@@ -234,7 +234,7 @@ function renderResults() {
                 <div class="result-item correct">
                     <div class="result-text">
                         <span class="badge-success result-badge">✓</span>
-                        ${result.width} × ${result.height} [${ratioText}]
+                        <span>${result.width}</span><span> × </span><span>${result.height}</span><span> [${ratioText}]</span>
                     </div>
                 </div>
             `;
@@ -244,10 +244,7 @@ function renderResults() {
                 <div class="result-item incorrect">
                     <div class="result-text">
                         <span class="badge-error result-badge">✗ False</span>
-                        ${result.width} ×
-                        <span class="highlight-error">${result.userHeight}</span>
-                        <span class="highlight-correct">${result.height}</span>
-                        [${ratioText}]
+                        <span>${result.width}</span><span> × </span><span class="highlight-error">${result.userHeight}</span><span> </span><span class="highlight-correct">${result.height}</span><span> [${ratioText}]</span>
                     </div>
                 </div>
             `;
