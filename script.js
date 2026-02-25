@@ -145,16 +145,14 @@ function calculateForRatio(A, B, ratioA, ratioB) {
   const rA = parseFloat(ratioA) || 0;
   const rB = parseFloat(ratioB) || 0;
 
-  // Validation
-  if (a <= 0 || rA <= 0 || rB <= 0) {
+  // Validation - need at least one dimension and valid ratio
+  if ((a <= 0 && b <= 0) || rA <= 0 || rB <= 0) {
     return null;
   }
 
-  // Calculate correct height based on ratio
-  const correctHeight = Math.round((a / rA) * rB);
-
-  // Case 1: Only A is given
-  if (b === 0) {
+  // Case 1: Only A (width) is given - calculate height
+  if (a > 0 && b === 0) {
+    const correctHeight = Math.round((a / rA) * rB);
     return {
       width: a,
       height: correctHeight,
@@ -162,10 +160,26 @@ function calculateForRatio(A, B, ratioA, ratioB) {
       ratioB: rB,
       isCorrect: true,
       userHeight: null,
+      userWidth: null,
     };
   }
 
-  // Case 2: Both A and B are given
+  // Case 2: Only B (height) is given - calculate width
+  if (b > 0 && a === 0) {
+    const correctWidth = Math.round((b / rB) * rA);
+    return {
+      width: correctWidth,
+      height: b,
+      ratioA: rA,
+      ratioB: rB,
+      isCorrect: true,
+      userHeight: null,
+      userWidth: null,
+    };
+  }
+
+  // Case 3: Both A and B are given - validate
+  const correctHeight = Math.round((a / rA) * rB);
   const isCorrect = Math.abs(b - correctHeight) < 0.5; // Allow for rounding
 
   return {
@@ -175,6 +189,7 @@ function calculateForRatio(A, B, ratioA, ratioB) {
     ratioB: rB,
     isCorrect: isCorrect,
     userHeight: b,
+    userWidth: null,
   };
 }
 
@@ -183,8 +198,8 @@ function renderResults() {
   const A = inputA.value;
   const B = inputB.value;
 
-  // Clear results if no width
-  if (!A || parseFloat(A) <= 0) {
+  // Clear results if no dimensions at all
+  if ((!A || parseFloat(A) <= 0) && (!B || parseFloat(B) <= 0)) {
     resultsContainer.innerHTML = `
             <div class="empty-state">
                 <div class="empty-state-icon">📐</div>
