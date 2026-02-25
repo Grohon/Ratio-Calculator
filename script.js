@@ -33,15 +33,21 @@ function handleInputChange() {
   renderResults();
 }
 
-// Validate number input (positive integers only)
+// Validate number input (positive numbers, decimals allowed)
 function validateNumberInput(input) {
   let value = input.value;
 
-  // Remove non-numeric characters
-  value = value.replace(/[^0-9]/g, "");
+  // Remove non-numeric characters (allow digits and decimal point)
+  value = value.replace(/[^0-9.]/g, "");
 
-  // Prevent leading zeros (except for empty or single zero)
-  if (value.length > 1 && value[0] === "0") {
+  // Prevent multiple decimal points
+  const parts = value.split(".");
+  if (parts.length > 2) {
+    value = parts[0] + "." + parts.slice(1).join("");
+  }
+
+  // Prevent leading zeros (except for "0." decimal notation)
+  if (value.length > 1 && value[0] === "0" && value[1] !== ".") {
     value = value.replace(/^0+/, "");
   }
 
@@ -70,11 +76,17 @@ function removeRatioRow(id) {
 function updateRatioValue(id, field, value) {
   const ratio = ratios.find((r) => r.id === id);
   if (ratio) {
-    // Validate - remove non-numeric characters
-    value = value.replace(/[^0-9]/g, "");
+    // Validate - remove non-numeric characters (allow decimals)
+    value = value.replace(/[^0-9.]/g, "");
 
-    // Prevent leading zeros
-    if (value.length > 1 && value[0] === "0") {
+    // Prevent multiple decimal points
+    const parts = value.split(".");
+    if (parts.length > 2) {
+      value = parts[0] + "." + parts.slice(1).join("");
+    }
+
+    // Prevent leading zeros (except for "0." decimal notation)
+    if (value.length > 1 && value[0] === "0" && value[1] !== ".") {
       value = value.replace(/^0+/, "");
     }
 
@@ -138,12 +150,24 @@ function renderRatioRows() {
   });
 }
 
+// Smart round: 2 decimal places if input has decimals, otherwise whole number
+function smartRound(value, hasDecimals) {
+  return hasDecimals
+    ? Math.round(value * 100) / 100
+    : Math.round(value);
+}
+
 // Calculate for a single ratio
 function calculateForRatio(A, B, ratioA, ratioB) {
   const a = parseFloat(A) || 0;
   const b = parseFloat(B) || 0;
   const rA = parseFloat(ratioA) || 0;
   const rB = parseFloat(ratioB) || 0;
+
+  // Check if any input has decimal values
+  const hasDecimals = [A, B, ratioA, ratioB].some(
+    (v) => String(v).includes(".")
+  );
 
   // Validation - need at least one dimension and valid ratio
   if ((a <= 0 && b <= 0) || rA <= 0 || rB <= 0) {
@@ -152,7 +176,7 @@ function calculateForRatio(A, B, ratioA, ratioB) {
 
   // Case 1: Only A (width) is given - calculate height
   if (a > 0 && b === 0) {
-    const correctHeight = Math.round((a / rA) * rB);
+    const correctHeight = smartRound((a / rA) * rB, hasDecimals);
     return {
       width: a,
       height: correctHeight,
@@ -166,7 +190,7 @@ function calculateForRatio(A, B, ratioA, ratioB) {
 
   // Case 2: Only B (height) is given - calculate width
   if (b > 0 && a === 0) {
-    const correctWidth = Math.round((b / rB) * rA);
+    const correctWidth = smartRound((b / rB) * rA, hasDecimals);
     return {
       width: correctWidth,
       height: b,
@@ -179,8 +203,8 @@ function calculateForRatio(A, B, ratioA, ratioB) {
   }
 
   // Case 3: Both A and B are given - validate
-  const correctHeight = Math.round((a / rA) * rB);
-  const isCorrect = Math.abs(b - correctHeight) < 0.5; // Allow for rounding
+  const correctHeight = smartRound((a / rA) * rB, hasDecimals);
+  const isCorrect = Math.abs(b - correctHeight) < 1; // Allow for rounding
 
   return {
     width: a,
