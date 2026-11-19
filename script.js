@@ -10,6 +10,7 @@ const inputB = document.getElementById("inputB");
 const ratioContainer = document.getElementById("ratioContainer");
 const resultsContainer = document.getElementById("resultsContainer");
 const addRatioBtn = document.getElementById("addRatioBtn");
+const yearEl = document.getElementById("year");
 
 // Single source of truth for numeric field cleaning
 function sanitizeNumeric(value) {
@@ -38,6 +39,7 @@ function escapeAttr(value) {
 
 // Load saved state, falling back to defaults when missing/corrupt
 function init() {
+  yearEl.textContent = new Date().getFullYear();
   const saved = loadState();
 
   if (saved) {
