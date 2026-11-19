@@ -1,6 +1,7 @@
 // State management
 let ratios = [];
 let ratioIdCounter = 0;
+let draggedRatioId = null;
 
 // DOM elements
 const inputA = document.getElementById("inputA");
@@ -23,6 +24,18 @@ function attachEventListeners() {
   inputA.addEventListener("input", handleInputChange);
   inputB.addEventListener("input", handleInputChange);
   addRatioBtn.addEventListener("click", () => addRatioRow());
+
+  // Reset any row left draggable after a handle press without a drag
+  document.addEventListener("mouseup", resetRowDraggables);
+  document.addEventListener("dragend", resetRowDraggables);
+}
+
+function resetRowDraggables() {
+  ratioContainer.querySelectorAll(".ratio-row").forEach((row) => {
+    row.draggable = false;
+    row.classList.remove("dragging", "drag-over");
+  });
+  draggedRatioId = null;
 }
 
 // Handle input change
@@ -95,6 +108,58 @@ function updateRatioValue(id, field, value) {
   }
 }
 
+// Move dragged ratio to target's position, then re-render rows + results
+function reorderRatio(draggedId, targetId) {
+  if (draggedId === targetId) return;
+
+  const from = ratios.findIndex((r) => r.id === draggedId);
+  const to = ratios.findIndex((r) => r.id === targetId);
+  if (from === -1 || to === -1) return;
+
+  const [moved] = ratios.splice(from, 1);
+  ratios.splice(to, 0, moved);
+
+  renderRatioRows();
+  renderResults();
+}
+
+// Enable drag-to-reorder from the handle only, so inputs stay editable
+function attachDragListeners(row, handle, ratio) {
+  handle.addEventListener("mousedown", () => {
+    row.draggable = true;
+  });
+
+  row.addEventListener("dragstart", (e) => {
+    draggedRatioId = ratio.id;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(ratio.id));
+    // Defer class add so the drag image isn't captured with drag styling
+    requestAnimationFrame(() => row.classList.add("dragging"));
+  });
+
+  row.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (draggedRatioId !== null && draggedRatioId !== ratio.id) {
+      row.classList.add("drag-over");
+    }
+  });
+
+  row.addEventListener("dragleave", () => {
+    row.classList.remove("drag-over");
+  });
+
+  row.addEventListener("drop", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    row.classList.remove("drag-over");
+    if (draggedRatioId !== null) {
+      reorderRatio(draggedRatioId, ratio.id);
+    }
+    resetRowDraggables();
+  });
+}
+
 // Render ratio rows
 function renderRatioRows() {
   ratioContainer.innerHTML = "";
@@ -102,8 +167,10 @@ function renderRatioRows() {
   ratios.forEach((ratio) => {
     const row = document.createElement("div");
     row.className = "ratio-row";
+    row.draggable = false;
 
     row.innerHTML = `
+            <button class="drag-handle" type="button" aria-label="Drag to reorder ratio" title="Drag to reorder">⠿</button>
             <input
                 type="number"
                 class="ratio-input-a"
@@ -132,6 +199,9 @@ function renderRatioRows() {
     const inputRatioA = row.querySelector(".ratio-input-a");
     const inputRatioB = row.querySelector(".ratio-input-b");
     const removeBtn = row.querySelector(".btn-remove");
+    const dragHandle = row.querySelector(".drag-handle");
+
+    attachDragListeners(row, dragHandle, ratio);
 
     inputRatioA.addEventListener("input", (e) => {
       updateRatioValue(ratio.id, "ratioA", e.target.value);
