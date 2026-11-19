@@ -2,6 +2,7 @@
 let ratios = [];
 let ratioIdCounter = 0;
 let draggedRatioId = null;
+const STORAGE_KEY = "ratioCalculatorState";
 
 // DOM elements
 const inputA = document.getElementById("inputA");
@@ -10,13 +11,78 @@ const ratioContainer = document.getElementById("ratioContainer");
 const resultsContainer = document.getElementById("resultsContainer");
 const addRatioBtn = document.getElementById("addRatioBtn");
 
-// Initialize with default ratios
+// Load saved state, falling back to defaults when missing/corrupt
 function init() {
-  addRatioRow(16, 9);
-  addRatioRow(9, 16);
-  addRatioRow(4, 3);
-  addRatioRow(3, 4);
+  const saved = loadState();
+
+  if (saved) {
+    const loaded = saved.ratios
+      .filter((r) => r && typeof r === "object")
+      .map((r) => ({
+        ratioA: String(r.ratioA ?? ""),
+        ratioB: String(r.ratioB ?? ""),
+      }));
+
+    ratios = (loaded.length ? loaded : defaultRatios()).map((r, id) => ({
+      id,
+      ratioA: r.ratioA,
+      ratioB: r.ratioB,
+    }));
+
+    if (typeof saved.inputA === "string") inputA.value = saved.inputA;
+    if (typeof saved.inputB === "string") inputB.value = saved.inputB;
+    validateNumberInput(inputA);
+    validateNumberInput(inputB);
+  } else {
+    ratios = defaultRatios().map((r, id) => ({
+      id,
+      ratioA: r.ratioA,
+      ratioB: r.ratioB,
+    }));
+  }
+
+  ratioIdCounter = ratios.length;
+  renderRatioRows();
   attachEventListeners();
+  renderResults();
+  saveState();
+}
+
+function defaultRatios() {
+  return [
+    { ratioA: 16, ratioB: 9 },
+    { ratioA: 9, ratioB: 16 },
+    { ratioA: 4, ratioB: 3 },
+    { ratioA: 3, ratioB: 4 },
+  ];
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const state = JSON.parse(raw);
+    if (!state || !Array.isArray(state.ratios)) return null;
+    return state;
+  } catch (err) {
+    return null;
+  }
+}
+
+// Persist ratio values, their array order, and the main inputs
+function saveState() {
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        ratios: ratios.map(({ ratioA, ratioB }) => ({ ratioA, ratioB })),
+        inputA: inputA.value,
+        inputB: inputB.value,
+      })
+    );
+  } catch (err) {
+    // Storage unavailable or full - keep app working in memory
+  }
 }
 
 // Add event listeners
@@ -44,6 +110,7 @@ function handleInputChange() {
   validateNumberInput(inputA);
   validateNumberInput(inputB);
   renderResults();
+  saveState();
 }
 
 // Validate number input (positive numbers, decimals allowed)
@@ -76,6 +143,7 @@ function addRatioRow(defaultA = "", defaultB = "") {
   ratios.push({ id, ratioA: defaultA, ratioB: defaultB });
   renderRatioRows();
   renderResults();
+  saveState();
 }
 
 // Remove a ratio row
@@ -83,6 +151,7 @@ function removeRatioRow(id) {
   ratios = ratios.filter((ratio) => ratio.id !== id);
   renderRatioRows();
   renderResults();
+  saveState();
 }
 
 // Update ratio value
@@ -105,6 +174,7 @@ function updateRatioValue(id, field, value) {
 
     ratio[field] = value;
     renderResults();
+    saveState();
   }
 }
 
@@ -121,6 +191,7 @@ function reorderRatio(draggedId, targetId) {
 
   renderRatioRows();
   renderResults();
+  saveState();
 }
 
 // Enable drag-to-reorder from the handle only, so inputs stay editable
