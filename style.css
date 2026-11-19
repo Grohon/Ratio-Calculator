@@ -304,6 +304,11 @@ input[type="number"] {
   background: rgba(239, 68, 68, 0.1);
 }
 
+.result-item.simplified {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+}
+
 .result-text {
   font-size: 1.2rem;
   font-weight: 600;
@@ -330,6 +335,11 @@ input[type="number"] {
 
 .badge-error {
   background: var(--error-color);
+  color: white;
+}
+
+.badge-info {
+  background: #667eea;
   color: white;
 }
 

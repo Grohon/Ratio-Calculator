@@ -367,6 +367,35 @@ function renderRatioRows() {
   });
 }
 
+function gcd(a, b) {
+  a = Math.abs(Math.trunc(a));
+  b = Math.abs(Math.trunc(b));
+  while (b) {
+    [a, b] = [b, a % b];
+  }
+  return a;
+}
+
+// Reduce A:B to lowest integer terms. Decimals are scaled first, e.g. 2.5:5 -> 1:2.
+function simplifyRatio(a, b) {
+  const numA = parseFloat(a);
+  const numB = parseFloat(b);
+  if (!(numA > 0) || !(numB > 0) || !Number.isFinite(numA * numB)) return null;
+
+  const decimalsOf = (v) => {
+    const parts = String(v).split(".");
+    return parts.length > 1 ? parts[1].length : 0;
+  };
+  const scale = 10 ** Math.max(decimalsOf(a), decimalsOf(b));
+  const intA = Math.round(numA * scale);
+  const intB = Math.round(numB * scale);
+  if (!Number.isSafeInteger(intA) || !Number.isSafeInteger(intB)) return null;
+
+  const divisor = gcd(intA, intB);
+  if (divisor <= 0) return null;
+  return `${intA / divisor}:${intB / divisor}`;
+}
+
 // Smart round: 2 decimal places if input has decimals, otherwise whole number
 function smartRound(value, hasDecimals) {
   return hasDecimals
@@ -449,6 +478,19 @@ function renderResults() {
     return;
   }
 
+  // Simplify the entered width:height using their greatest common divisor
+  const simplified = simplifyRatio(A, B);
+  const simplifiedHtml = simplified
+    ? `
+        <div class="result-item simplified">
+            <div class="result-text">
+                <span class="badge-info result-badge">Simplified</span>
+                <span>${A}:${B}</span><span> = </span><span class="highlight-correct">${simplified}</span>
+            </div>
+        </div>
+    `
+    : "";
+
   const results = [];
 
   ratios.forEach((ratio) => {
@@ -460,7 +502,9 @@ function renderResults() {
 
   // Render results
   if (results.length === 0) {
-    resultsContainer.innerHTML = `
+    resultsContainer.innerHTML =
+      simplifiedHtml +
+      `
             <div class="empty-state">
                 <div class="empty-state-icon">⚠️</div>
                 <p>Add valid aspect ratios to see results</p>
@@ -469,7 +513,7 @@ function renderResults() {
     return;
   }
 
-  resultsContainer.innerHTML = results
+  resultsContainer.innerHTML = simplifiedHtml + results
     .map((result) => {
       const ratioText = `${result.ratioA}:${result.ratioB}`;
 
