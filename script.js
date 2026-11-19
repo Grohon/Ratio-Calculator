@@ -11,6 +11,31 @@ const ratioContainer = document.getElementById("ratioContainer");
 const resultsContainer = document.getElementById("resultsContainer");
 const addRatioBtn = document.getElementById("addRatioBtn");
 
+// Single source of truth for numeric field cleaning
+function sanitizeNumeric(value) {
+  let cleaned = String(value ?? "").replace(/[^0-9.]/g, "");
+
+  const parts = cleaned.split(".");
+  if (parts.length > 2) {
+    cleaned = parts[0] + "." + parts.slice(1).join("");
+  }
+
+  if (cleaned.length > 1 && cleaned[0] === "0" && cleaned[1] !== ".") {
+    cleaned = cleaned.replace(/^0+/, "");
+  }
+
+  return cleaned;
+}
+
+// Escape values interpolated into innerHTML attribute positions
+function escapeAttr(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 // Load saved state, falling back to defaults when missing/corrupt
 function init() {
   const saved = loadState();
@@ -19,8 +44,8 @@ function init() {
     const loaded = saved.ratios
       .filter((r) => r && typeof r === "object")
       .map((r) => ({
-        ratioA: String(r.ratioA ?? ""),
-        ratioB: String(r.ratioB ?? ""),
+        ratioA: sanitizeNumeric(r.ratioA),
+        ratioB: sanitizeNumeric(r.ratioB),
       }));
 
     ratios = (loaded.length ? loaded : defaultRatios()).map((r, id) => ({
@@ -115,23 +140,7 @@ function handleInputChange() {
 
 // Validate number input (positive numbers, decimals allowed)
 function validateNumberInput(input) {
-  let value = input.value;
-
-  // Remove non-numeric characters (allow digits and decimal point)
-  value = value.replace(/[^0-9.]/g, "");
-
-  // Prevent multiple decimal points
-  const parts = value.split(".");
-  if (parts.length > 2) {
-    value = parts[0] + "." + parts.slice(1).join("");
-  }
-
-  // Prevent leading zeros (except for "0." decimal notation)
-  if (value.length > 1 && value[0] === "0" && value[1] !== ".") {
-    value = value.replace(/^0+/, "");
-  }
-
-  // Update input value
+  const value = sanitizeNumeric(input.value);
   if (input.value !== value) {
     input.value = value;
   }
@@ -158,24 +167,16 @@ function removeRatioRow(id) {
 function updateRatioValue(id, field, value) {
   const ratio = ratios.find((r) => r.id === id);
   if (ratio) {
-    // Validate - remove non-numeric characters (allow decimals)
-    value = value.replace(/[^0-9.]/g, "");
-
-    // Prevent multiple decimal points
-    const parts = value.split(".");
-    if (parts.length > 2) {
-      value = parts[0] + "." + parts.slice(1).join("");
-    }
-
-    // Prevent leading zeros (except for "0." decimal notation)
-    if (value.length > 1 && value[0] === "0" && value[1] !== ".") {
-      value = value.replace(/^0+/, "");
-    }
-
-    ratio[field] = value;
+    ratio[field] = sanitizeNumeric(value);
     renderResults();
     saveState();
   }
+}
+
+function commitReorder() {
+  renderRatioRows();
+  renderResults();
+  saveState();
 }
 
 // Move dragged ratio to target's position, then re-render rows + results
@@ -188,14 +189,30 @@ function reorderRatio(draggedId, targetId) {
 
   const [moved] = ratios.splice(from, 1);
   ratios.splice(to, 0, moved);
+  commitReorder();
+}
 
-  renderRatioRows();
-  renderResults();
-  saveState();
+// Keyboard reorder: swap a ratio with its neighbour
+function moveRatioBy(id, delta) {
+  const from = ratios.findIndex((r) => r.id === id);
+  const to = from + delta;
+  if (from === -1 || to < 0 || to >= ratios.length) return false;
+
+  const [moved] = ratios.splice(from, 1);
+  ratios.splice(to, 0, moved);
+  commitReorder();
+  return true;
+}
+
+function clearDragOverClasses() {
+  ratioContainer.querySelectorAll(".drag-over").forEach((row) => {
+    row.classList.remove("drag-over");
+  });
 }
 
 // Enable drag-to-reorder from the handle only, so inputs stay editable
 function attachDragListeners(row, handle, ratio) {
+  // --- Mouse / HTML5 drag ---
   handle.addEventListener("mousedown", () => {
     row.draggable = true;
   });
@@ -229,6 +246,61 @@ function attachDragListeners(row, handle, ratio) {
     }
     resetRowDraggables();
   });
+
+  // --- Keyboard reorder ---
+  handle.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+    e.preventDefault();
+    const delta = e.key === "ArrowUp" ? -1 : 1;
+    if (moveRatioBy(ratio.id, delta)) {
+      const movedRow = ratioContainer.querySelector(
+        `.ratio-row[data-id="${ratio.id}"]`
+      );
+      movedRow?.querySelector(".drag-handle")?.focus();
+    }
+  });
+
+  // --- Touch reorder (HTML5 DnD is mouse-only) ---
+  let touchTarget = null;
+
+  handle.addEventListener("touchstart", () => {
+    row.draggable = false;
+    row.classList.add("dragging");
+  });
+
+  handle.addEventListener(
+    "touchmove",
+    (e) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      e.preventDefault();
+
+      const under = document
+        .elementFromPoint(touch.clientX, touch.clientY)
+        ?.closest(".ratio-row");
+      clearDragOverClasses();
+      touchTarget = under && under !== row ? under : null;
+      touchTarget?.classList.add("drag-over");
+    },
+    { passive: false }
+  );
+
+  handle.addEventListener("touchend", (e) => {
+    e.preventDefault();
+    if (touchTarget) {
+      const targetId = Number(touchTarget.dataset.id);
+      reorderRatio(ratio.id, targetId);
+    }
+    touchTarget = null;
+    row.classList.remove("dragging");
+    clearDragOverClasses();
+  });
+
+  handle.addEventListener("touchcancel", () => {
+    touchTarget = null;
+    row.classList.remove("dragging");
+    clearDragOverClasses();
+  });
 }
 
 // Render ratio rows
@@ -239,14 +311,18 @@ function renderRatioRows() {
     const row = document.createElement("div");
     row.className = "ratio-row";
     row.draggable = false;
+    row.dataset.id = String(ratio.id);
+    const safeId = escapeAttr(ratio.id);
+    const safeA = escapeAttr(ratio.ratioA);
+    const safeB = escapeAttr(ratio.ratioB);
 
     row.innerHTML = `
-            <button class="drag-handle" type="button" aria-label="Drag to reorder ratio" title="Drag to reorder">⠿</button>
+            <button class="drag-handle" type="button" aria-label="Reorder ratio with arrow keys or drag" title="Drag or use arrow keys to reorder">⠿</button>
             <input
                 type="number"
                 class="ratio-input-a"
-                data-id="${ratio.id}"
-                value="${ratio.ratioA}"
+                data-id="${safeId}"
+                value="${safeA}"
                 placeholder="16"
                 min="1"
                 aria-label="Ratio numerator"
@@ -255,13 +331,13 @@ function renderRatioRows() {
             <input
                 type="number"
                 class="ratio-input-b"
-                data-id="${ratio.id}"
-                value="${ratio.ratioB}"
+                data-id="${safeId}"
+                value="${safeB}"
                 placeholder="9"
                 min="1"
                 aria-label="Ratio denominator"
             >
-            <button class="btn btn-remove" data-id="${ratio.id}" type="button" aria-label="Remove ratio">−</button>
+            <button class="btn btn-remove" data-id="${safeId}" type="button" aria-label="Remove ratio">−</button>
         `;
 
     ratioContainer.appendChild(row);
@@ -325,7 +401,6 @@ function calculateForRatio(A, B, ratioA, ratioB) {
       ratioB: rB,
       isCorrect: true,
       userHeight: null,
-      userWidth: null,
     };
   }
 
@@ -339,13 +414,14 @@ function calculateForRatio(A, B, ratioA, ratioB) {
       ratioB: rB,
       isCorrect: true,
       userHeight: null,
-      userWidth: null,
     };
   }
 
   // Case 3: Both A and B are given - validate
   const correctHeight = smartRound((a / rA) * rB, hasDecimals);
-  const isCorrect = Math.abs(b - correctHeight) < 1; // Allow for rounding
+  // Relative epsilon stays tight on small resolutions and scales on large ones
+  const tolerance = Math.max(0.01, Math.abs(correctHeight) * 0.0001);
+  const isCorrect = Math.abs(b - correctHeight) <= tolerance;
 
   return {
     width: a,
@@ -354,7 +430,6 @@ function calculateForRatio(A, B, ratioA, ratioB) {
     ratioB: rB,
     isCorrect: isCorrect,
     userHeight: b,
-    userWidth: null,
   };
 }
 
@@ -398,18 +473,8 @@ function renderResults() {
     .map((result) => {
       const ratioText = `${result.ratioA}:${result.ratioB}`;
 
-      if (result.userHeight === null) {
-        // Case 1: Only A is given
-        return `
-                <div class="result-item correct">
-                    <div class="result-text">
-                        <span class="badge-success result-badge">✓</span>
-                        <span>${result.width}</span><span> × </span><span>${result.height}</span><span> [${ratioText}]</span>
-                    </div>
-                </div>
-            `;
-      } else if (result.isCorrect) {
-        // Case 2: A and B are correct
+      if (result.userHeight === null || result.isCorrect) {
+        // Single dimension given, or both dimensions match the ratio
         return `
                 <div class="result-item correct">
                     <div class="result-text">
@@ -419,7 +484,7 @@ function renderResults() {
                 </div>
             `;
       } else {
-        // Case 2: A and B don't match the ratio
+        // Both dimensions given but they don't match the ratio
         return `
                 <div class="result-item incorrect">
                     <div class="result-text">
